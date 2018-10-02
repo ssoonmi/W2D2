@@ -8,4 +8,8 @@ class Queen < Piece
     'Q'
   end
 
+  def move_dirs
+    [:horizontal, :diagonal]
+  end
+
 end

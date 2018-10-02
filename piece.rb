@@ -18,9 +18,6 @@ class Piece
   def valid_moves
   end
 
-  def move_into_check?(end_pos)
-  end
-
   def symbol
     ' '
   end
@@ -31,5 +28,14 @@ class Piece
 
   def inspect
     self.symbol
+  end
+
+  def valid_position?(pos)
+    self.board.valid_position?(pos)
+  end
+
+  private
+
+  def move_into_check?(end_pos)
   end
 end

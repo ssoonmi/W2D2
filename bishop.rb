@@ -8,4 +8,8 @@ class Bishop < Piece
     'B'
   end
 
+  def move_dirs
+    [:diagonal]
+  end
+
 end

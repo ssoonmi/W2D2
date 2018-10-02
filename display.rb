@@ -11,9 +11,9 @@ class Display
   end
 
   def render
-    str = "  0 1 2 3 4 5 6 7\n"
+    str = "  a b c d e f g h\n"
     @board.rows.each_with_index do |row, row_idx|
-      str += "#{row_idx} "
+      str += "#{row_idx + 1} "
       row.each_with_index do |piece, col_idx|
         color = (piece.player == @board.player1 ? :green : :red)
         if [row_idx, col_idx] == @cursor.cursor_pos

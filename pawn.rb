@@ -32,16 +32,16 @@ class Pawn < Piece
       valid_moves << [start_pos[0] + (dir * 2), start_pos[1]]
     end
 
-    valid_moves.reject {|pos| board[pos].is_a?(NullPiece)}
+    valid_moves.select {|pos| board[pos].is_a?(NullPiece)}
   end
 
   def side_attacks
     row, col = self.pos
     dir = forward_dir
 
-    [[row + dir, col + 1],[row + dir, col - 1]].reject do |pos|
-      valid_position?(pos) == false && (self.color == board[pos].color ||
-        board[pos].is_a?(NullPiece))
+    [[row + dir, col + 1],[row + dir, col - 1]].select do |pos|
+      valid_position?(pos) == true && self.color != board[pos].color &&
+        board[pos].is_a?(NullPiece) == false
     end
   end
 

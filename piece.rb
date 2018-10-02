@@ -2,8 +2,8 @@ require 'colorize'
 
 class Piece
 
-  attr_reader :color, :board
-  attr_accessor :pos
+  attr_reader :color
+  attr_accessor :pos, :board
 
   def initialize(color, board, pos)
     @color = color
@@ -12,10 +12,13 @@ class Piece
   end
 
   def empty?
-
+    self.board[self.pos].is_a?(NullPiece)
   end
 
   def valid_moves
+    moves.reject do |move|
+      move_into_check?(move)
+    end
   end
 
   def symbol
@@ -37,5 +40,11 @@ class Piece
   private
 
   def move_into_check?(end_pos)
+    begin
+      new_board = self.board.move_piece(color, self.pos, end_pos)
+    rescue
+      return true
+    end
+    false
   end
 end

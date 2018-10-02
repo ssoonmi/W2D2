@@ -10,17 +10,17 @@ class Display
 
   end
 
-  def render
+  def render(player_color)
     str = "  a b c d e f g h\n"
     @board.rows.each_with_index do |row, row_idx|
       str += "#{row_idx + 1} "
       row.each_with_index do |piece, col_idx|
-        color = (piece.player == @board.player1 ? :green : :red)
+        color = piece.color
         if [row_idx, col_idx] == @cursor.cursor_pos
-          color = :blue
-          str += piece.type.nil? ? '_'.colorize(color) : piece.type[0].colorize(color)
+          color = player_color == :green ? :blue : :yellow
+          str += piece.is_a?(NullPiece) ? '_'.colorize(color) : piece.to_s.colorize(color)
         else
-          str += piece.type.nil? ? ' ' : piece.type[0].colorize(color)
+          str += piece.is_a?(NullPiece) ? ' ' : piece.to_s.colorize(color)
         end
         str += ' ' unless col_idx == 7
       end
@@ -32,6 +32,14 @@ class Display
   def play
     until false
       render
+      input = @cursor.get_input
+      return input unless input.nil?
+    end
+  end
+
+  def get_input(player_color)
+    while true
+      render(player_color)
       input = @cursor.get_input
       return input unless input.nil?
     end

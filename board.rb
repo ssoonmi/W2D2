@@ -1,10 +1,12 @@
-require_relative 'piece'
-require_relative 'null_piece'
+require_relative 'pieces_root'
+require_relative 'player'
 require_relative 'cursor'
 require_relative 'display'
 require 'colorize'
 
 class Board
+
+
   def initialize(player1, player2)
     @player1 = player1
     @player2 = player2
@@ -16,9 +18,9 @@ class Board
     grid.map!.with_index do |row, row_idx|
       col_idx = 0
       if row_idx == 1
-        8.times {|i| row << Pawn.new(color1, self, [row_idx, i - 1])}
+        8.times {|i| row << Pawn.new(color1, self, [row_idx, i])}
       elsif row_idx == 6
-        8.times {|i| row << Pawn.new(color2, self, [row_idx, i - 1])}
+        8.times {|i| row << Pawn.new(color2, self, [row_idx, i])}
       elsif row_idx == 0
         row << Rook.new(color1, self, [row_idx, 0])
         row << Knight.new(color1, self, [row_idx, 1])
@@ -45,28 +47,34 @@ class Board
   end
 
 
-  def move_piece(start_pos, end_pos)
-    valid_move?(start_pos, end_pos)
+  def move_piece!(color, start_pos, end_pos)
+    # valid_move?(start_pos, end_pos)
+    raise 'Not your piece' if self[start_pos].color != color
+    raise 'Invalid move' unless valid_move?(start_pos, end_pos)
 
     start_piece = self[start_pos]
     end_piece = self[end_pos]
 
-    self[start_pos] = NullPiece.new
+    self[start_pos] = NullPiece.instance
     self[end_pos] = start_piece
+    self[end_pos].pos = end_pos
+    self
   end
 
   def valid_move?(start_pos, end_pos)
     start_piece = self[start_pos]
     end_piece = self[end_pos]
-    raise 'Invalid start position' unless valid_position?(start_pos)
-    raise 'Invalid end position' unless valid_position?(end_pos)
-    raise 'Can\'t take own piece!' if is_same_player?(start_pos, end_pos)
-    raise 'Can not take King!' if end_piece.type == 'King'
-    raise 'No piece at start position' if start_piece.is_a?(NullPiece)
-    #raise "Not a valid #{start_piece.type} move" unless start_piece.valid_move?(start_pos, end_pos)
-    unless start_piece.type == 'Knight' || can_move_through?(start_pos, end_pos)
-      raise "Cannot jump your pieces or enemy pieces with #{start_piece}"
-    end
+
+    start_piece.valid_moves.include?(end_pos)
+    # raise 'Invalid start position' unless valid_position?(start_pos)
+    # raise 'Invalid end position' unless valid_position?(end_pos)
+    # raise 'Can\'t take own piece!' if is_same_player?(start_pos, end_pos)
+    # raise 'Can not take King!' if end_piece.type == 'King'
+    # raise 'No piece at start position' if start_piece.is_a?(NullPiece)
+    # #raise "Not a valid #{start_piece.type} move" unless start_piece.valid_move?(start_pos, end_pos)
+    # unless start_piece.type == 'Knight' || can_move_through?(start_pos, end_pos)
+    #   raise "Cannot jump your pieces or enemy pieces with #{start_piece}"
+    # end
   end
 
   def can_move_through?(start_pos, end_pos)
@@ -137,6 +145,145 @@ class Board
 
   def rows
     grid
+  end
+
+  def checkmate?(color)
+    in_check?(color) &&
+    king_stuck?(color) &&
+    pieces_checking_king_cant_be_taken?(color) &&
+    cant_block_check?(color)
+  end
+
+  def king_stuck?(color)
+    king_pos = find_king(color)
+
+    king = self[king_pos]
+    king_moves = king.moves
+
+    return true if king.moves.empty?
+
+    king_moves.all? do |move|
+      board_dup = move_piece(color, king_pos, move)
+      board_dup.in_check?(color)
+    end
+  end
+
+  def pieces_checking_king_cant_be_taken?(color)
+    check_pieces = pieces_checking_king(color)
+
+    check_pieces.each do |check_piece|
+      check_piece_pos = check_piece.pos
+      rows.each do |row|
+        row.each do |piece|
+          return false if piece.moves.include?(check_piece_pos)
+        end
+      end
+    end
+
+    true
+  end
+
+  def pieces_checking_king(color)
+    king_pos = find_king(color)
+    pieces_arr = []
+    each_piece do |piece|
+      pieces_arr << piece if piece.moves.include?(king_pos)
+    end
+    pieces_arr
+  end
+
+  def cant_block_check?(color)
+    check_pieces = pieces_checking_king(color)
+    king_pos = find_king(color)
+
+    check_pieces.each do |check_piece|
+      return false if check_piece.is_a?(Knight)
+      check_piece_pos = check_piece.pos
+      each_piece do |piece|
+        next if piece == check_piece
+        next if piece.color == color
+        piece.valid_moves.each do |move|
+          if within_path_to_check?(move, check_piece_pos, king_pos)
+            return false
+          end
+        end
+      end
+    end
+    true
+  end
+
+  def each_piece(&prc)
+    rows.each do |row|
+      row.each do |piece|
+        prc.call(piece)
+      end
+    end
+  end
+
+  def within_path_to_check?(pos, start_pos, end_pos)
+    row1, row2 = start_pos[0], end_pos[0]
+    row1, row2 = row2, row1 if row1 > row2
+
+    col1, col2 = start_pos[1], end_pos[1]
+    col1, col2 = col2, col1 if col1 > col2
+
+    pos[0].between?(row1 + 1, row2 - 1) && pos[1].between?(col1 + 1, col2 - 1)
+  end
+
+  def in_check?(color)
+    king_pos = find_king(color)
+    rows.each do |row|
+      row.each do |piece|
+        return true if piece.moves.include?(king_pos)
+      end
+    end
+    false
+  end
+
+  def find_king(color)
+    rows.each do |row|
+      row.each do |piece|
+        return piece.pos if piece.color == color && piece.is_a?(King)
+      end
+    end
+
+  end
+
+  def pieces
+
+  end
+
+  def dup
+    new_board = Board.new(self.player1,self.player2)
+
+    rows.each_with_index do |row, row_idx|
+      row.each_with_index do |piece, col_idx|
+        if piece.is_a?(NullPiece)
+          new_board[[row_idx, col_idx]] = NullPiece.instance
+        else
+          new_board[[row_idx, col_idx]] = piece.dup
+        end
+      end
+    end
+
+    new_board
+  end
+
+  def move_piece(color, start_pos, end_pos)
+
+    new_board = self.dup
+
+    start_piece = new_board[start_pos]
+    end_piece = new_board[end_pos]
+
+    new_board[start_pos] = NullPiece.instance
+    new_board[end_pos] = start_piece
+    new_board[end_pos].pos = end_pos
+
+    new_board.each_piece do |piece|
+        piece.board = new_board
+    end
+    new_board
   end
 
   attr_reader :player1, :player2
